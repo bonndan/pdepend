@@ -289,4 +289,10 @@ class PHP_Depend_Log_Depgraph_Graphviz extends PHP_Depend_Log_Jdepend_Xml
 
     }
 
+    /**
+     * @todo use these?
+    public function visitProperty(PHP_Depend_Code_Property $property){}
+    public function visitMethod(PHP_Depend_Code_Method $method){}
+     * 
+     */
 }

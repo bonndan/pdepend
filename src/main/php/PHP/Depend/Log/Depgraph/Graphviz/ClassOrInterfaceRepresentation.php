@@ -96,6 +96,12 @@ class PHP_Depend_Log_Depgraph_Graphviz_ClassOrInterfaceRepresentation
     protected $dependencies = array();
     
     /**
+     * flag wether node is an interface
+     * @var boolean 
+     */
+    protected $isInterface = false;
+    
+    /**
      * constructor requires an abstract class or interface node
      * 
      * @param PHP_Depend_Code_AbstractClassOrInterface $node 
@@ -104,9 +110,7 @@ class PHP_Depend_Log_Depgraph_Graphviz_ClassOrInterfaceRepresentation
     {
         $this->uuid = PHP_Depend_Log_Depgraph_Graphviz::getUuuidForDot($node->getUUID());
         $this->name = $node->getName();
-        if ($node->getModifiers() == PHP_Depend_ConstantsI::IS_IMPLICIT_ABSTRACT) {
-            $this->name = '\<\<interface\>\>\n' . $this->name;
-        }
+        $this->isInterface = $node->getModifiers() == PHP_Depend_ConstantsI::IS_IMPLICIT_ABSTRACT;
         
         /* @var $method PHP_Depend_Code_Method */
         foreach ($node->getMethods() as $method) {
@@ -157,14 +161,44 @@ class PHP_Depend_Log_Depgraph_Graphviz_ClassOrInterfaceRepresentation
     }
     
     /**
+     * returns the name prefixed with "<<interface>>" if necessary
+     * 
+     * @return string 
+     */
+    protected function getName()
+    {
+        if ($this->isInterface) {
+            return '\<\<interface\>\>\n' . $this->name;
+        }
+        
+        return $this->name;
+    }
+    
+    /**
+     * returns a template based on type
+     * 
+     * @return string
+     */
+    protected function getTemplate()
+    {
+        if ($this->isInterface) {
+            $template = '%s [shape=Mrecord, fillcolor=white, style=filled, label="%s|%s"];' . PHP_EOL;
+        } else {
+            $template = '%s [shape=Mrecord, fillcolor=lightyellow, style=filled, label="%s|%s"];' . PHP_EOL;
+        }
+        
+        return $template;
+    }
+    
+    /**
      * returns the dot representation
      * 
      * @return string 
      */
     public function __toString()
     {
-        $template = '%s [shape=record, label="%s|%s"];' . PHP_EOL;
-        $template = sprintf($template, $this->uuid, $this->name, implode('\n', $this->methods)) . PHP_EOL;
+        $template = $this->getTemplate();
+        $template = sprintf($template, $this->uuid, $this->getName(), implode('\n', $this->methods)) . PHP_EOL;
         
         if ($this->parent !== null) {
             $template .= $this->uuid . ' -> ' . $this->parent . ' [arrowhead=empty];'. PHP_EOL;

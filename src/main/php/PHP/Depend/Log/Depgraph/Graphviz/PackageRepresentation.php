@@ -102,6 +102,8 @@ class PHP_Depend_Log_Depgraph_Graphviz_PackageRepresentation
     {
         $buffer = PHP_EOL . 'subgraph cluster' . $this->uuid . '{' . PHP_EOL;
         $buffer .= sprintf('label = "%s";', $this->name) . PHP_EOL;
+        $buffer .= 'style=filled;'.PHP_EOL;
+        $buffer .= 'color=lightgrey;'.PHP_EOL;
         foreach ($this->nodes as $node) {
             $buffer .= $node->__toString();
         }

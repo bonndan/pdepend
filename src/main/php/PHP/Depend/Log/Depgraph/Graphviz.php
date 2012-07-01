@@ -54,7 +54,7 @@
  * Usage:
  * <code>
  * /src/bin/pdepend --depgraph-graphviz=test.dot src/main/php/PHP/Depend
- * fdp -Tpng test.dot > test.png
+ * dot -Tpng test.dot > test.png
  * </code>
  *
  * @category   QualityAssurance
@@ -72,7 +72,6 @@ class PHP_Depend_Log_Depgraph_Graphviz extends PHP_Depend_Log_Jdepend_Xml
     /**
      * The type of this class.
      */
-
     const CLAZZ = __CLASS__;
 
     /**
@@ -83,29 +82,11 @@ class PHP_Depend_Log_Depgraph_Graphviz extends PHP_Depend_Log_Jdepend_Xml
     private $_logFile = null;
 
     /**
-     * all nodes which represent an interface
-     * @var type 
-     */
-    protected $interfaceNodes = array();
-
-    /**
-     * all nodes which represent a class
+     * packages
      * @var array 
      */
-    protected $classNodes = array();
-
-    /**
-     * dependencies between interfaces in the form [interface::uuid][dependsupon::uuid
-     * @var array 
-     */
-    protected $interfaceDependencies = array();
-
-    /**
-     * dependencies between classes in the form [class::uuid][dependsupon::uuid
-     * @var array 
-     */
-    protected $classDependencies = array();
-
+    protected $packages = array();
+    
     /**
      * Sets the output log file.
      *
@@ -135,32 +116,18 @@ class PHP_Depend_Log_Depgraph_Graphviz extends PHP_Depend_Log_Jdepend_Xml
             $node->accept($this);
         }
 
-        $buffer = "digraph depgraph {" . PHP_EOL . PHP_EOL;
+        $buffer =
+            'digraph depgraph {
+    graph [rankdir = "LR", pack=true];
+    node[shape=record,style=filled,fillcolor=gray95]
+    edge[arrowhead=empty]            
+' . PHP_EOL;
 
-        foreach ($this->interfaceNodes as $node) {
-            $buffer .= $this->getRepresentationForInterface($node);
-        }
-        
-        foreach ($this->interfaceDependencies as $from => $deps) {
-            foreach ($deps as $uuid) {
-                $buffer .= $this->getRepresentationForDependency($from, $uuid);
-            }
+        foreach ($this->packages as $package) {
+            $buffer .= $package->__toString();
         }
 
-        foreach ($this->classNodes as $node) {
-            $buffer .= $this->getRepresentationForClass($node);
-        }
-        
-        foreach ($this->classDependencies as $from => $deps) {
-            foreach ($deps as $uuid) {
-                $buffer .= $this->getRepresentationForDependency($from, $uuid);
-            }
-        }
-        
         $buffer .= PHP_EOL . "}";
-
-
-
 
         file_put_contents($this->_logFile, $buffer);
     }
@@ -172,51 +139,34 @@ class PHP_Depend_Log_Depgraph_Graphviz extends PHP_Depend_Log_Jdepend_Xml
      * 
      * @return string 
      */
-    protected function getUuuidForDot($uuid)
+    public static function getUuuidForDot($uuid)
     {
         return 'uuid' . str_replace('-', '', $uuid);
     }
+
+    /**
+     * get a package, add a representation on the fly
+     * 
+     * @param PHP_Depend_Code_Package $package
+     * 
+     * @return PHP_Depend_Log_DepGraph_Graphviz_PackageRepresentation
+     */
+    protected function getPackage(PHP_Depend_Code_Package $package = null)
+    {
+        if ($package === null) {
+            $uuid = 'default';
+        } else {
+            $uuid = self::getUuuidForDot($package->getUUID());
+            
+        }
+        
+        if (!isset($this->packages[$uuid])) {
+            $this->packages[$uuid] = new PHP_Depend_Log_Depgraph_Graphviz_PackageRepresentation($package);
+        }
+        
+        return $this->packages[$uuid];
+    }
     
-    /**
-     * returns a graphviz node representing a class
-     * 
-     * @param PHP_Depend_Code_AbstractClassOrInterface $node
-     * 
-     * @return string 
-     */
-    protected function getRepresentationForClass(PHP_Depend_Code_AbstractClassOrInterface $node)
-    {
-        $template = '%s [shape=box, label="%s"];' . PHP_EOL;
-        return sprintf($template, $this->getUuuidForDot($node->getUUID()), $node->getName());
-    }
-
-    /**
-     * returns a graphviz node representing a class
-     * 
-     * @param PHP_Depend_Code_AbstractClassOrInterface $node
-     * 
-     * @return string 
-     */
-    protected function getRepresentationForInterface(PHP_Depend_Code_AbstractClassOrInterface $node)
-    {
-        $template = '%s [shape=ellipse, label="%s"];' . PHP_EOL;
-        return sprintf($template, $this->getUuuidForDot($node->getUUID()), $node->getName());
-    }
-
-    /**
-     * get the dependency representation (edge)
-     * 
-     * @param string $from uuid
-     * @param string $to   uuid
-     * 
-     * @return string
-     */
-    protected function getRepresentationForDependency($from, $to)
-    {
-        $template = '%s -> %s;' . PHP_EOL;
-        return sprintf($template, $this->getUuuidForDot($from), $this->getUuuidForDot($to));
-    }
-
     /**
      * Visits a class node.
      *
@@ -227,20 +177,7 @@ class PHP_Depend_Log_Depgraph_Graphviz extends PHP_Depend_Log_Jdepend_Xml
      */
     public function visitClass(PHP_Depend_Code_Class $class)
     {
-        if (!$class->isUserDefined()) {
-            return;
-        }
-
-        $this->classNodes[] = $class;
-
-        foreach ($class->getDependencies() as $dependency) {
-            /* @var $dependency PHP_Depend_Code_AbstractClassOrInterface */
-            if (!$dependency->isUserDefined()) {
-                continue;
-            }
-
-            $this->classDependencies[$class->getUUID()][] = $dependency->getUUID();
-        }
+        $this->visitClassOrInterface($class);
     }
 
     /**
@@ -253,20 +190,24 @@ class PHP_Depend_Log_Depgraph_Graphviz extends PHP_Depend_Log_Jdepend_Xml
      */
     public function visitInterface(PHP_Depend_Code_Interface $interface)
     {
-        if (!$interface->isUserDefined()) {
+        $this->visitClassOrInterface($interface);
+    }
+    
+    /**
+     * visits classes or interfaces and adds a dot representation to their package
+     * 
+     * @param PHP_Depend_Code_AbstractClassOrInterface $node
+     * 
+     * @return void
+     */
+    protected function visitClassOrInterface(PHP_Depend_Code_AbstractClassOrInterface $node)
+    {
+        if (!$node->isUserDefined()) {
             return;
         }
 
-        $this->interfaceNodes[] = $interface;
-
-        foreach ($interface->getDependencies() as $dependency) {
-            /* @var $dependency PHP_Depend_Code_AbstractClassOrInterface */
-            if (!$dependency->isUserDefined()) {
-                continue;
-            }
-
-            $this->interfaceDependencies[$interface->getUUID()][] = $dependency->getUUID();
-        }
+        $representation = new PHP_Depend_Log_Depgraph_Graphviz_ClassOrInterfaceRepresentation($node);
+        $this->getPackage($node->getPackage())->addRepresentation($representation);
     }
 
     /**
@@ -286,13 +227,5 @@ class PHP_Depend_Log_Depgraph_Graphviz extends PHP_Depend_Log_Jdepend_Xml
         foreach ($package->getTypes() as $type) {
             $type->accept($this);
         }
-
     }
-
-    /**
-     * @todo use these?
-    public function visitProperty(PHP_Depend_Code_Property $property){}
-    public function visitMethod(PHP_Depend_Code_Method $method){}
-     * 
-     */
 }

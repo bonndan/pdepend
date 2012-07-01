@@ -167,11 +167,11 @@ class PHP_Depend_Log_Depgraph_GraphvizTest extends PHP_Depend_AbstractTest
 
         $contents = file_get_contents($this->resultFile);
         $this->assertContains(
-            '[shape=ellipse, label="pkg1FooI"];',
+            '[shape=record, label="\<\<interface\>\>\npkg1FooI|"];',
             $contents
         );
         $this->assertContains(
-            '[shape=box, label="pkg2Bar"];',
+            '[shape=record, label="pkg2Foobar|+\ pkg2Foobar\ get\l"];',
             $contents
         );
         $this->assertContains(

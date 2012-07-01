@@ -105,7 +105,7 @@ class PHP_Depend_Log_Depgraph_Graphviz_ClassOrInterfaceRepresentation
         $this->uuid = PHP_Depend_Log_Depgraph_Graphviz::getUuuidForDot($node->getUUID());
         $this->name = $node->getName();
         if ($node->getModifiers() == PHP_Depend_ConstantsI::IS_IMPLICIT_ABSTRACT) {
-            $this->name = '<<interface>>\n' . $this->name;
+            $this->name = '\<\<interface\>\>\n' . $this->name;
         }
         
         /* @var $method PHP_Depend_Code_Method */

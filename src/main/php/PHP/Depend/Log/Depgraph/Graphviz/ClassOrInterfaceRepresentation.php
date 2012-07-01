@@ -61,18 +61,38 @@
  */
 class PHP_Depend_Log_Depgraph_Graphviz_ClassOrInterfaceRepresentation
 {
+    /**
+     * dot-compatible uuid 
+     * @var string
+     */
     protected $uuid;
+    /**
+     * name of the class or interface
+     * @var string
+     */
     protected $name;
     
+    /**
+     * public methods
+     * @var array
+     */
     protected $methods = array();
     
     /**
-     * uuid of the parent
-     * @var type 
+     * dot-compatible uuid of the parent
+     * @var string 
      */
     protected $parent;
     
+    /**
+     * implemented interfaces (uuids)
+     * @var array
+     */
     protected $interfaces = array();
+    /**
+     * dependencies (uuids)
+     * @var array
+     */
     protected $dependencies = array();
     
     /**
@@ -94,8 +114,10 @@ class PHP_Depend_Log_Depgraph_Graphviz_ClassOrInterfaceRepresentation
             if (is_object($returnType)) {
                 $returnType = $returnType->getName();
             }
-            $public = $method->isPublic()?'+':'';
-            $this->methods[] = $public . $returnType. '\ ' . $method->getName() . '\l';
+            if (!$method->isPublic()) {
+                continue;
+            }
+            $this->methods[] = '+\ ' . $returnType. '\ ' . $method->getName() . '\l';
         }
         
         //parent 

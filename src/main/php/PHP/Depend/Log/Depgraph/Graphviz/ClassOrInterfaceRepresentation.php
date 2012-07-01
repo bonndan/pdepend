@@ -110,14 +110,21 @@ class PHP_Depend_Log_Depgraph_Graphviz_ClassOrInterfaceRepresentation
         
         /* @var $method PHP_Depend_Code_Method */
         foreach ($node->getMethods() as $method) {
+            if (!$method->isPublic()) {
+                continue;
+            }
+            
             $returnType = $method->getReturnClass();
             if (is_object($returnType)) {
                 $returnType = $returnType->getName();
             }
-            if (!$method->isPublic()) {
-                continue;
+            if (trim($returnType == '')) {
+                $returnType = '';
+            } else {
+                $returnType .= '\ ';
             }
-            $this->methods[] = '+\ ' . $returnType. '\ ' . $method->getName() . '\l';
+            
+            $this->methods[] = '+\ ' . $returnType . $method->getName() . '\l';
         }
         
         //parent 
